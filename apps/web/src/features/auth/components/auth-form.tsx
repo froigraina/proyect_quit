@@ -7,6 +7,7 @@ import { useMemo, useState, useTransition } from "react";
 import { ArrowRight, LoaderCircle, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ApiError } from "@/lib/api";
 import { useSession } from "../session-provider";
 
 type AuthMode = "login" | "register";
@@ -45,6 +46,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   function submit() {
     startTransition(async () => {
       try {
+        setFeedback(null);
         if (mode === "register") {
           await session.register({ displayName, email, password });
         } else {
@@ -52,8 +54,28 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         }
 
         router.replace("/onboarding");
-      } catch {
-        setFeedback(mode === "register" ? "No se pudo crear la cuenta." : "Email o contraseña inválidos.");
+      } catch (error) {
+        if (error instanceof ApiError) {
+          if (mode === "register" && error.status === 409) {
+            setFeedback("Ya existe una cuenta con ese email. Probá iniciar sesión.");
+            return;
+          }
+
+          if (mode === "login" && error.status === 401) {
+            setFeedback("Email o contraseña incorrectos.");
+            return;
+          }
+
+          if (mode === "register" && error.status === 400) {
+            setFeedback("Revisá los datos. La contraseña debe tener al menos 8 caracteres.");
+            return;
+          }
+
+          setFeedback(error.message);
+          return;
+        }
+
+        setFeedback(mode === "register" ? "No se pudo crear la cuenta." : "No se pudo iniciar sesión.");
       }
     });
   }

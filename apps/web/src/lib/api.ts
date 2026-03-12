@@ -73,6 +73,18 @@ export type Achievement = {
   type?: string;
 };
 
+export class ApiError extends Error {
+  status: number;
+  details?: unknown;
+
+  constructor(message: string, status: number, details?: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.details = details;
+  }
+}
+
 type PeriodParams = {
   year?: number;
   month?: number;
@@ -131,9 +143,25 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    const error = new Error(`Request failed: ${response.status}`);
-    Object.assign(error, { status: response.status });
-    throw error;
+    let payload: unknown = null;
+    let message = `Request failed: ${response.status}`;
+
+    try {
+      payload = await response.json();
+
+      if (
+        payload &&
+        typeof payload === "object" &&
+        "message" in payload &&
+        typeof payload.message === "string"
+      ) {
+        message = payload.message;
+      }
+    } catch {
+      // Intentional: some responses may not be JSON.
+    }
+
+    throw new ApiError(message, response.status, payload);
   }
 
   return response.json() as Promise<T>;
