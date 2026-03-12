@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PlanMode {
+  QUIT
+  REDUCE
+}
+
+enum EntryStatus {
+  SUCCESS
+  USED_FREE_DAY
+  FAILED
+}
+
+enum AchievementType {
+  SMOKE_FREE_DAYS
+  STREAK
+  MONEY_SAVED
+  CIGARETTES_AVOIDED
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  displayName  String
+  passwordHash String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  profile      Profile?
+  sessions     AuthSession[]
+}
+
+model AuthSession {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Profile {
+  id                        String                @id @default(cuid())
+  timezone                  String                @default("America/Argentina/Buenos_Aires")
+  planMode                  PlanMode              @default(REDUCE)
+  baselineDailyConsumption  Int
+  dailyGoal                 Int
+  packPrice                 Decimal               @db.Decimal(10, 2)
+  monthlyFreeDays           Int                   @default(4)
+  onboardingCompletedAt     DateTime?
+  createdAt                 DateTime              @default(now())
+  updatedAt                 DateTime              @updatedAt
+  dailyEntries              DailyEntry[]
+  monthlyAllowances         MonthlyAllowance[]
+  settingsSnapshots         ProfileSettingsSnapshot[]
+  unlockedAchievements      UnlockedAchievement[]
+  userId                    String                @unique
+  user                      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ProfileSettingsSnapshot {
+  id                       String    @id @default(cuid())
+  effectiveFrom            DateTime  @db.Date
+  planMode                 PlanMode
+  baselineDailyConsumption Int
+  dailyGoal                Int
+  packPrice                Decimal   @db.Decimal(10, 2)
+  monthlyFreeDays          Int
+  createdAt                DateTime  @default(now())
+  profileId                String
+  profile                  Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, effectiveFrom])
+}
+
+model DailyEntry {
+  id                 String      @id @default(cuid())
+  date               DateTime    @db.Date
+  cigarettesSmoked   Int
+  dailyGoal          Int
+  status             EntryStatus
+  freeDayUsed        Boolean     @default(false)
+  moneySaved         Decimal     @db.Decimal(10, 2)
+  cigarettesAvoided  Int
+  smokeFreeHours     Int
+  notes              String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  profileId          String
+  profile            Profile     @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, date])
+}
+
+model MonthlyAllowance {
+  id             String   @id @default(cuid())
+  year           Int
+  month          Int
+  freeDaysLimit  Int
+  freeDaysUsed   Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  profileId      String
+  profile        Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, year, month])
+}
+
+model Achievement {
+  id          String                 @id @default(cuid())
+  key         String                 @unique
+  title       String
+  description String
+  type        AchievementType
+  threshold   Int
+  createdAt   DateTime               @default(now())
+  unlockedBy  UnlockedAchievement[]
+}
+
+model UnlockedAchievement {
+  id            String      @id @default(cuid())
+  unlockedAt    DateTime    @default(now())
+  achievementId String
+  profileId     String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  profile       Profile     @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([achievementId, profileId])
+}

@@ -1,0 +1,16 @@
+{
+  "name": "pucho",
+  "private": true,
+  "packageManager": "pnpm@9.12.2",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "pnpm --filter api start:dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "format": "pnpm -r format",
+    "prisma:generate": "pnpm --filter api prisma:generate",
+    "prisma:migrate:dev": "pnpm --filter api exec prisma migrate dev",
+    "prisma:studio": "pnpm --filter api prisma studio"
+  }
+}
