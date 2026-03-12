@@ -41,7 +41,7 @@ Variables requeridas:
 Build command:
 
 ```bash
-corepack enable && pnpm install --frozen-lockfile && pnpm --filter api build
+corepack enable && pnpm install --frozen-lockfile && pnpm --filter api prisma:generate && pnpm --filter api build
 ```
 
 Start command:
